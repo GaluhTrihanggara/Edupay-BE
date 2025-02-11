@@ -11,11 +11,11 @@ import (
 // BillSemesterRepository adalah interface untuk operasi CRUD pada entitas BillSemester
 type BillSemesterRepository interface {
 	GetAllBillsRepository(page, limit int, semester, year string) ([]*model.BillSemester, error)
-	GetBillByIDRepository(id string) (*model.BillSemester, error)
+	GetBillByIdRepository(id string) (*model.BillSemester, error)
 	CreateBillRepository(bill *model.BillSemester) (*model.BillSemester, error)
-	UpdateBillByIDRepository(id string, bill *model.BillSemester) (*model.BillSemester, error)
-	DeleteBillByIDRepository(id string) error
-	GetBillsByStudentIDRepository(studentID string) ([]*model.BillSemester, error)
+	UpdateBillByIdRepository(id string, bill *model.BillSemester) (*model.BillSemester, error)
+	DeleteBillByIdRepository(id string) error
+	GetBillsByStudentIdRepository(studentID string) ([]*model.BillSemester, error)
 }
 
 // billSemesterRepository adalah struct yang mengimplementasikan BillSemesterRepository
@@ -41,7 +41,7 @@ func (r *billSemesterRepository) GetAllBillsRepository(page, limit int, semester
 		query = query.Where("year = ?", year)
 	}
 
-	result := query.Order("created_at DESC").Find(&bills)
+	result := query.Preload("Transaction").Order("created_at DESC").Find(&bills)
 	if result.Error != nil {
 		return nil, fmt.Errorf("error getting bills: %s", result.Error)
 	}
@@ -49,9 +49,9 @@ func (r *billSemesterRepository) GetAllBillsRepository(page, limit int, semester
 }
 
 // GetBillByIDRepository mengambil tagihan semester berdasarkan ID
-func (r *billSemesterRepository) GetBillByIDRepository(id string) (*model.BillSemester, error) {
+func (r *billSemesterRepository) GetBillByIdRepository(id string) (*model.BillSemester, error) {
 	var bill model.BillSemester
-	result := r.db.First(&bill, "id = ?", id)
+	result := r.db.Preload("Transaction").First(&bill, "id = ?", id)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("bill with ID %s not found", id)
@@ -71,7 +71,7 @@ func (r *billSemesterRepository) CreateBillRepository(bill *model.BillSemester) 
 }
 
 // UpdateBillByIDRepository memperbarui tagihan semester berdasarkan ID
-func (r *billSemesterRepository) UpdateBillByIDRepository(id string, bill *model.BillSemester) (*model.BillSemester, error) {
+func (r *billSemesterRepository) UpdateBillByIdRepository(id string, bill *model.BillSemester) (*model.BillSemester, error) {
 	result := r.db.Model(&model.BillSemester{}).Where("id = ?", id).Updates(bill)
 	if result.Error != nil {
 		return nil, result.Error
@@ -82,8 +82,8 @@ func (r *billSemesterRepository) UpdateBillByIDRepository(id string, bill *model
 	return bill, nil
 }
 
-// DeleteBillByIDRepository menghapus tagihan semester berdasarkan ID
-func (r *billSemesterRepository) DeleteBillByIDRepository(id string) error {
+// DeleteBillSemesterByIdRepository menghapus tagihan semester berdasarkan ID
+func (r *billSemesterRepository) DeleteBillByIdRepository(id string) error {
 	result := r.db.Delete(&model.BillSemester{}, "id = ?", id)
 	if result.Error != nil {
 		return result.Error
@@ -95,9 +95,9 @@ func (r *billSemesterRepository) DeleteBillByIDRepository(id string) error {
 }
 
 // GetBillsByStudentIDRepository mengambil semua tagihan semester berdasarkan StudentID
-func (r *billSemesterRepository) GetBillsByStudentIDRepository(studentID string) ([]*model.BillSemester, error) {
+func (r *billSemesterRepository) GetBillsByStudentIdRepository(studentID string) ([]*model.BillSemester, error) {
 	var bills []*model.BillSemester
-	result := r.db.Where("student_id = ?", studentID).Find(&bills)
+	result := r.db.Preload("Transaction").Where("student_id = ?", studentID).Find(&bills)
 	if result.Error != nil {
 		return nil, result.Error
 	}

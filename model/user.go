@@ -9,6 +9,7 @@ import (
 
 const USER_TYPE = "user"
 const ADMIN_TYPE = "admin"
+const ALL_TYPE = "all"
 
 type UUIDPrimaryKey struct {
 	ID        string `gorm:"primaryKey" json:"id"`

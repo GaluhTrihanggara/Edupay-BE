@@ -10,11 +10,11 @@ import (
 
 type UserRepository interface {
 	GetAllUsersRepository(page, limit int, name string) ([]*model.User, error)
-	GetUserByIDRepository(id string) (*model.User, error)
+	GetUserByIdRepository(id string) (*model.User, error)
 	GetUserByPhoneRepository(phone string) (*model.User, error)
 	GetUserByEmailRepository(email string) (*model.User, error)
-	UpdateUserByIDRepository(id string, user *model.User) (*model.User, error)
-	DeleteUserByIDRepository(id string) error
+	UpdateUserByIdRepository(id string, user *model.User) (*model.User, error)
+	DeleteUserByIdRepository(id string) error
 	GetUserByQueryRepository(query string, page, limit int) ([]*model.User, error)
 }
 
@@ -22,8 +22,18 @@ type userRepository struct {
 	db *gorm.DB
 }
 
+// GetUserByEmailRepository implements UserRepository.
+func (r *userRepository) GetUserByEmailRepository(email string) (*model.User, error) {
+	panic("unimplemented")
+}
+
+// GetUserByPhoneRepository implements UserRepository.
+func (r *userRepository) GetUserByPhoneRepository(phone string) (*model.User, error) {
+	panic("unimplemented")
+}
+
 func NewUserRepository(db *gorm.DB) *userRepository {
-	return &userRepository{db}
+	return &userRepository{db: db}
 }
 
 func (r *userRepository) GetAllUsersRepository(page, limit int, name string) ([]*model.User, error) {
@@ -43,7 +53,7 @@ func (r *userRepository) GetAllUsersRepository(page, limit int, name string) ([]
 }
 
 // GetUserByIDRepository mengambil pengguna berdasarkan ID
-func (r *userRepository) GetUserByIDRepository(id string) (*model.User, error) {
+func (r *userRepository) GetUserByIdRepository(id string) (*model.User, error) {
 	var user model.User
 	result := r.db.First(&user, "id = ?", id)
 	if result.Error != nil {
@@ -56,7 +66,7 @@ func (r *userRepository) GetUserByIDRepository(id string) (*model.User, error) {
 }
 
 // UpdateUserByIDRepository memperbarui data pengguna berdasarkan ID
-func (r *userRepository) UpdateUserByIDRepository(id string, user *model.User) (*model.User, error) {
+func (r *userRepository) UpdateUserByIdRepository(id string, user *model.User) (*model.User, error) {
 	result := r.db.Model(&model.User{}).Where("id = ?", id).Updates(user)
 	if result.Error != nil {
 		return nil, result.Error
@@ -68,7 +78,7 @@ func (r *userRepository) UpdateUserByIDRepository(id string, user *model.User) (
 }
 
 // DeleteUserByIDRepository menghapus pengguna berdasarkan ID
-func (r *userRepository) DeleteUserByIDRepository(id string) error {
+func (r *userRepository) DeleteUserByIdRepository(id string) error {
 	result := r.db.Delete(&model.User{}, "id = ?", id)
 	if result.Error != nil {
 		return result.Error

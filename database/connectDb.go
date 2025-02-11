@@ -10,7 +10,9 @@ import (
 )
 
 func ConnectDB() (*gorm.DB, error) {
-	dsn := fmt.Sprintf("host=%s user=%s passoword=%s dbname=%s port=%s sslmode=%s",
+	// Format string DSN untuk PostgreSQL
+	dsn := fmt.Sprintf(
+		"host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
 		config.AppConfig.DBHost,
 		config.AppConfig.DBUsername,
 		config.AppConfig.DBPassword,
@@ -19,11 +21,12 @@ func ConnectDB() (*gorm.DB, error) {
 		config.AppConfig.SSLMode,
 	)
 
+	// Membuka koneksi database menggunakan GORM
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
 	return db, nil
