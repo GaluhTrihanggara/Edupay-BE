@@ -63,7 +63,7 @@ func (uc *studentUseCase) GetStudentByIdUseCase(Id string) (*model.Student, erro
 func (uc *studentUseCase) GetStudentsByParentNameUseCase(parentName string) ([]*model.Student, error) {
 	students, err := uc.studentRepository.GetStudentsByParentNameRepository(parentName)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error getting students by parent name: %w", err)
 	}
 	return students, nil
 }

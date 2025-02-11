@@ -63,10 +63,14 @@ func (r *studentRepository) GetStudentByIdRepository(id string) (*model.Student,
 
 func (r *studentRepository) GetStudentsByParentNameRepository(parentName string) ([]*model.Student, error) {
 	var students []*model.Student
-	result := r.db.Joins("JOIN users ON users.id = students.parent_id").Where("users.name LIKE ?", "%"+parentName+"%").Find(&students)
+	result := r.db.Joins("JOIN users ON students.parent_id = users.id").
+		Where("users.name LIKE ?", "%"+parentName+"%").
+		Find(&students)
+
 	if result.Error != nil {
-		return nil, fmt.Errorf("error getting students by parent name: %s", result.Error)
+		return nil, result.Error
 	}
+
 	return students, nil
 }
 
