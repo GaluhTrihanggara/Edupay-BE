@@ -33,7 +33,7 @@ func (u *authController) LoginController(c echo.Context) error {
 		})
 	}
 
-	user, err := u.authUseCase.LoginUseCase(payload)
+	user, userTypeMessage, err := u.authUseCase.LoginUseCase(payload)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -44,7 +44,7 @@ func (u *authController) LoginController(c echo.Context) error {
 	return c.JSON(http.StatusOK, model.HttpResponse{
 		MetaData: model.MetaData{
 			StatusCode: http.StatusOK,
-			Message:    "User Login succesfully",
+			Message:    userTypeMessage, // Menampilkan pesan sesuai UserType
 		},
 		Data: user,
 	})
@@ -68,9 +68,9 @@ func (u *authController) RegisterController(c echo.Context) error {
 		})
 	}
 
-	return c.JSON(http.StatusCreated, model.HttpResponse{
+	return c.JSON(http.StatusOK, model.HttpResponse{
 		MetaData: model.MetaData{
-			StatusCode: http.StatusCreated,
+			StatusCode: http.StatusOK,
 			Message:    "User Created successfully",
 		},
 		Data: user,
@@ -93,9 +93,9 @@ func (u *authController) RegisterAdminController(c echo.Context) error {
 		})
 	}
 
-	return c.JSON(http.StatusCreated, model.HttpResponse{
+	return c.JSON(http.StatusOK, model.HttpResponse{
 		MetaData: model.MetaData{
-			StatusCode: http.StatusCreated,
+			StatusCode: http.StatusOK,
 			Message:    "Admin Created successfully",
 		},
 		Data: user,

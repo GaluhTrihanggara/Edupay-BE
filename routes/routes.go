@@ -77,8 +77,8 @@ func Routes(e *echo.Echo, db *gorm.DB) {
 
 	// Routes Grouping
 	api := e.Group("/api/v1")
-	admin := api.Group("/admin", middleware.AuthMiddleware) // Tambahkan middleware
-	user := api.Group("/user", middleware.AuthMiddleware)   // Tambahkan middleware
+	admin := api.Group("/admin", middleware.AdminAuthMiddleware) // Tambahkan middleware
+	user := api.Group("/user", middleware.AuthMiddleware)        // Tambahkan middleware
 
 	// ====== AUTH ROUTES =======
 	api.POST("/login", authController.LoginController)
@@ -147,6 +147,28 @@ func Routes(e *echo.Echo, db *gorm.DB) {
 	user.DELETE("/user", userController.DeleteUserByIdController)
 
 	// ====== USER TRANSACTION =======
+	user.POST("/item", itemController.CreateItemController)
+	user.POST("/item", itemController.CreateItemController)
+	user.GET("/item/:id", itemController.GetItemByIdController)
+	user.PUT("/item/:id", itemController.UpdateItemByIdController)
+	user.DELETE("/item/:id", itemController.DeleteItemByIdController)
+
+	// ====== USER TRANSACTION =======
 	user.GET("/transactions", transactionController.GetTransactionByUserIdController)
 	user.GET("/transaction-histories", transactionHistoryController.GetHistoriesByUserIdController)
+
+	// ====== USER STUDENT =======
+	user.POST("/student", studentController.CreateStudentController)
+	user.GET("/student/:id", studentController.GetStudentByIdController)
+	user.GET("/students", studentController.GetStudentsByParentNameController) // Ambil siswa berdasarkan parent_name
+
+	// ====== USER TRANSACTION =======
+	user.GET("/transactions", transactionController.GetTransactionByUserIdController) // Ambil semua transaksi user
+	user.GET("/transaction/:id", transactionController.GetTransactionByIdController)  // Ambil transaksi berdasarkan ID
+	user.POST("/transaction", transactionController.CreateTransactionController)      // Buat transaksi baru
+
+	// ====== USER TRANSACTION HISTORY =======
+	user.GET("/transaction-histories", transactionHistoryController.GetHistoriesByUserIdController) // Ambil semua riwayat transaksi user
+	user.GET("/transaction-history/:id", transactionHistoryController.GetHistoryByIdController)     // Ambil detail riwayat transaksi berdasarkan ID
+
 }

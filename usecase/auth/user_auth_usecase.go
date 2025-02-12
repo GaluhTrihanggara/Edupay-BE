@@ -6,14 +6,13 @@ import (
 	"Edupay/usecase/middlewares"
 	"errors"
 	"fmt"
-	"strings"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthUseCase interface {
 	RegisterUseCase(payload model.User) (*model.AuthResponse, error)
-	LoginUseCase(payload model.User) (*model.AuthResponse, error)
+	LoginUseCase(payload model.User) (*model.AuthResponse, string, error)
 	RegisterAdminUseCase(payload model.User) (*model.AuthResponse, error)
 }
 
@@ -26,9 +25,9 @@ func NewAuthUsecase(authRepository repository.AuthRepository) *authUseCase {
 }
 
 func (s *authUseCase) RegisterUseCase(payload model.User) (*model.AuthResponse, error) {
-	lowercasePayload := model.User{
-		Name:     strings.ToLower(payload.Name),
-		Email:    strings.ToLower(payload.Email),
+	Payload := model.User{
+		Name:     payload.Name,
+		Email:    payload.Email,
 		Password: payload.Password,
 		UserType: model.USER_TYPE,
 		Phone:    payload.Phone,
@@ -38,14 +37,14 @@ func (s *authUseCase) RegisterUseCase(payload model.User) (*model.AuthResponse, 
 		return nil, errors.New("name and email are required fields")
 	}
 
-	hashedPassword, _ := HashPassword(lowercasePayload.Password)
+	hashedPassword, _ := HashPassword(Payload.Password)
 
 	newUserModel := model.User{
-		Name:     lowercasePayload.Name,
-		Email:    lowercasePayload.Email,
+		Name:     Payload.Name,
+		Email:    Payload.Email,
 		Password: hashedPassword,
-		UserType: lowercasePayload.UserType, // Menggunakan value dari lowercasePayload
-		Phone:    lowercasePayload.Phone,
+		UserType: Payload.UserType, // Menggunakan value dari lowercasePayload
+		Phone:    Payload.Phone,
 	}
 	user, err := s.authRepository.RegisterRepository(newUserModel)
 	if err != nil {
@@ -67,30 +66,30 @@ func (s *authUseCase) RegisterUseCase(payload model.User) (*model.AuthResponse, 
 	return resp, nil
 }
 
-func (s *authUseCase) LoginUseCase(payload model.User) (*model.AuthResponse, error) {
+func (s *authUseCase) LoginUseCase(payload model.User) (*model.AuthResponse, string, error) {
 
-	lowercasePayloadEmail := strings.ToLower(payload.Email)
+	PayloadEmail := payload.Email
 
 	if payload.Email == "" {
-		return nil, errors.New("email field is required")
+		return nil, "", errors.New("email field is required")
 	}
 
 	if payload.Password == "" {
-		return nil, errors.New("password field is required")
-
+		return nil, "", errors.New("password field is required")
 	}
-	user, err := s.authRepository.GetUserByEmailRepository(lowercasePayloadEmail)
+
+	user, err := s.authRepository.GetUserByEmailRepository(PayloadEmail)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	if !ComparePasswords(user.Password, payload.Password) {
-		return nil, errors.New("invalid email or password")
+		return nil, "", errors.New("invalid email or password")
 	}
 
 	token, err := middlewares.CreateToken(*user)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create token: %v", err)
+		return nil, "", fmt.Errorf("failed to create token: %v", err)
 	}
 
 	resp := &model.AuthResponse{
@@ -100,13 +99,21 @@ func (s *authUseCase) LoginUseCase(payload model.User) (*model.AuthResponse, err
 		Token: token,
 	}
 
-	return resp, nil
+	// Cek apakah user adalah admin atau user biasa
+	var userTypeMessage string
+	if user.UserType == model.ADMIN_TYPE {
+		userTypeMessage = "Admin login successful"
+	} else {
+		userTypeMessage = "User login successful"
+	}
+
+	return resp, userTypeMessage, nil
 }
 
 func (s *authUseCase) RegisterAdminUseCase(payload model.User) (*model.AuthResponse, error) {
-	lowercasePayload := model.User{
-		Name:     strings.ToLower(payload.Name),
-		Email:    strings.ToLower(payload.Email),
+	Payload := model.User{
+		Name:     payload.Name,
+		Email:    payload.Email,
 		Password: payload.Password,
 		UserType: model.ADMIN_TYPE, // Untuk admin, tetap gunakan ADMIN_TYPE
 		Phone:    payload.Phone,
@@ -116,14 +123,14 @@ func (s *authUseCase) RegisterAdminUseCase(payload model.User) (*model.AuthRespo
 		return nil, errors.New("name and email are required fields")
 	}
 
-	hashedPassword, _ := HashPassword(lowercasePayload.Password)
+	hashedPassword, _ := HashPassword(Payload.Password)
 
 	newUserModel := model.User{
-		Name:     lowercasePayload.Name,
-		Email:    lowercasePayload.Email,
+		Name:     Payload.Name,
+		Email:    Payload.Email,
 		Password: hashedPassword,
-		UserType: lowercasePayload.UserType, // Menggunakan value dari lowercasePayload
-		Phone:    lowercasePayload.Phone,
+		UserType: Payload.UserType, // Menggunakan value dari lowercasePayload
+		Phone:    Payload.Phone,
 	}
 
 	user, err := s.authRepository.RegisterRepository(newUserModel)

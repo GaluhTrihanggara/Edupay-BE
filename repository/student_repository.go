@@ -65,6 +65,7 @@ func (r *studentRepository) GetStudentsByParentNameRepository(parentName string)
 	var students []*model.Student
 	result := r.db.Joins("JOIN users ON students.parent_id = users.id").
 		Where("users.name LIKE ?", "%"+parentName+"%").
+		Preload("Parent").
 		Find(&students)
 
 	if result.Error != nil {

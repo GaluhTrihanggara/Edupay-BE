@@ -41,6 +41,7 @@ func (uc *userUseCase) GetAllUsersUseCase(page, limit int, name string) ([]*mode
 			Name:      user.Name,
 			Email:     user.Email,
 			Phone:     user.Phone,
+			UserType:  user.UserType,
 			CreatedAt: user.CreatedAt,
 			UpdatedAt: user.UpdatedAt,
 		})
