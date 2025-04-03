@@ -16,10 +16,16 @@ type UserRepository interface {
 	UpdateUserByIdRepository(id string, user *model.User) (*model.User, error)
 	DeleteUserByIdRepository(id string) error
 	GetUserByQueryRepository(query string, page, limit int) ([]*model.User, error)
+	UpdateUserBalanceRepository(userId string, newBalance float64) error
+	UpdateUserAmountByIdRepository(id string, user *model.User) (*model.User, error)
 }
 
 type userRepository struct {
 	db *gorm.DB
+}
+
+func NewUserRepository(db *gorm.DB) *userRepository {
+	return &userRepository{db: db}
 }
 
 // GetUserByEmailRepository implements UserRepository.
@@ -30,10 +36,6 @@ func (r *userRepository) GetUserByEmailRepository(email string) (*model.User, er
 // GetUserByPhoneRepository implements UserRepository.
 func (r *userRepository) GetUserByPhoneRepository(phone string) (*model.User, error) {
 	panic("unimplemented")
-}
-
-func NewUserRepository(db *gorm.DB) *userRepository {
-	return &userRepository{db: db}
 }
 
 func (r *userRepository) GetAllUsersRepository(page, limit int, name string) ([]*model.User, error) {
@@ -133,4 +135,30 @@ func (r *userRepository) GetUserByQueryRepository(query string, page, limit int)
 	}
 
 	return users, nil
+}
+
+func (r *userRepository) UpdateUserBalanceRepository(userId string, newBalance float64) error {
+	result := r.db.Model(&model.User{}).Where("id = ?", userId).Update("amount", newBalance)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return errors.New("user not found or balance unchanged")
+	}
+	return nil
+}
+
+func (r *userRepository) UpdateUserAmountByIdRepository(id string, user *model.User) (*model.User, error) {
+	updatedUser := &model.User{
+		Amount: user.Amount,
+	}
+
+	result := r.db.Model(&model.User{}).Where("id = ?", id).Updates(updatedUser)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	if result.RowsAffected == 0 {
+		return nil, errors.New("user not found")
+	}
+	return updatedUser, nil
 }

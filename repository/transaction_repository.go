@@ -10,7 +10,7 @@ import (
 
 // TransactionRepository adalah interface untuk operasi CRUD pada entitas Transaction
 type TransactionRepository interface {
-	GetAllTransactionsRepository(page, limit int, userId, itemId, billSemesterId string) ([]*model.Transaction, error)
+	GetAllTransactionsRepository(page, limit int) ([]*model.Transaction, error)
 	GetTransactionByIdRepository(id string) (*model.Transaction, error)
 	CreateTransactionRepository(transaction *model.Transaction) (*model.Transaction, error)
 	UpdateTransactionByIdRepository(id string, transaction *model.Transaction) (*model.Transaction, error)
@@ -38,25 +38,13 @@ func NewTransactionRepository(db *gorm.DB) *transactionRepository {
 }
 
 // GetAllTransactionsRepository mengambil semua transaksi dengan pagination dan pencarian berdasarkan ParentId dan ItemId
-func (r *transactionRepository) GetAllTransactionsRepository(page, limit int, userId, itemId, billSemesterId string) ([]*model.Transaction, error) {
+func (r *transactionRepository) GetAllTransactionsRepository(page, limit int) ([]*model.Transaction, error) {
 	var transactions []*model.Transaction
 	offset := (page - 1) * limit
 
-	query := r.db.Preload("Items").Preload("BillSemester").Offset(offset).Limit(limit)
-
-	if userId != "" {
-		query = query.Where("user_id = ?", userId)
-	}
-	if itemId != "" {
-		query = query.Where("item_id = ?", itemId)
-	}
-	if billSemesterId != "" {
-		query = query.Where("bill_semester_id = ?", billSemesterId)
-	}
-
-	result := query.Order("transaction_date DESC").Find(&transactions)
-	if result.Error != nil {
-		return nil, fmt.Errorf("error getting transactions: %s", result.Error)
+	err := r.db.Offset(offset).Limit(limit).Order("created_at DESC").Find(&transactions).Error
+	if err != nil {
+		return nil, err
 	}
 	return transactions, nil
 }

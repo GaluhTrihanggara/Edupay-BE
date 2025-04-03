@@ -21,6 +21,17 @@ type Config struct {
 
 	// Middlewares
 	SecretJWT string
+
+	// MAIL
+	SmtpHost      string `mapstructure:"SMTP_HOST"`
+	SmtpPort      int    `mapstructure:"SMTP_PORT"`
+	SenderEmail   string `mapstructure:"SENDER_EMAIL"`
+	EmailPassword string `mapstructure:"EMAIL_PASSWORD"`
+
+	// Oy
+	BaseUrl  string `mapstructure:"BASEURL"`
+	Username string `mapstructure:"USERNAME"`
+	ApiKey   string `mapstructure:"API_KEY"`
 }
 
 var (
@@ -69,6 +80,12 @@ func LoadConfig() *Config {
 			AppConfig.AppPort = value
 		case "SECRET_JWT":
 			AppConfig.SecretJWT = value
+		case "BaseURL": // Tambahkan Midtrans Server Key
+			AppConfig.BaseUrl = value
+		case "Username": // Tambahkan Midtrans Client Key
+			AppConfig.Username = value
+		case "Apikey": // Tambahkan Midtrans Environment
+			AppConfig.ApiKey = value
 		}
 	}
 

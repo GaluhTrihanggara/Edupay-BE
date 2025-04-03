@@ -28,9 +28,10 @@ func Routes(e *echo.Echo, db *gorm.DB) {
 	userController := controller.NewUserController(userUseCase)
 
 	// Bill Semester
+	BillerOyApiRepository := repository.NewBillerOyApiOyApiRepository()
 	billSemesterRepository := repository.NewBillSemesterRepository(db)
 	transactionRepository := repository.NewTransactionRepository(db)
-	billSemesterUseCase := billsemester.NewBillSemesterUseCase(billSemesterRepository, transactionRepository)
+	billSemesterUseCase := billsemester.NewBillSemesterUseCase(billSemesterRepository, userRepository, transactionRepository, BillerOyApiRepository)
 	transactionUseCase := transaction.NewTransactionUseCase(transactionRepository)
 	billSemesterController := controller.NewBillSemesterController(billSemesterUseCase, transactionUseCase)
 
@@ -86,7 +87,7 @@ func Routes(e *echo.Echo, db *gorm.DB) {
 	api.POST("/register/admin", authController.RegisterAdminController)
 
 	// ====== ADMIN ROLE =======
-	admin.POST("/bill-semester", billSemesterController.CreateBillSemesterController)
+	// admin.POST("/bill-semester", billSemesterController.CreateBillSemesterController)
 	admin.GET("/bill-semesters", billSemesterController.GetAllBillSemesterController)
 	admin.GET("/bill-semester/:id", billSemesterController.GetBillSemesterByIdController)
 	admin.PUT("/bill-semester/:id", billSemesterController.UpdateBillSemesterByIdController)
@@ -122,7 +123,6 @@ func Routes(e *echo.Echo, db *gorm.DB) {
 	admin.DELETE("/student/:id", studentController.DeleteStudentByIdController)
 
 	// ====== Transaction Admin =======
-	admin.POST("/transaction", transactionController.CreateTransactionController)
 	admin.GET("/transactions", transactionController.GetAllTransactionsController)
 	admin.GET("/transaction/:id", transactionController.GetTransactionByIdController)
 
@@ -164,8 +164,7 @@ func Routes(e *echo.Echo, db *gorm.DB) {
 
 	// ====== USER TRANSACTION =======
 	user.GET("/transactions", transactionController.GetTransactionByUserIdController) // Ambil semua transaksi user
-	user.GET("/transaction/:id", transactionController.GetTransactionByIdController)  // Ambil transaksi berdasarkan ID
-	user.POST("/transaction", transactionController.CreateTransactionController)      // Buat transaksi baru
+	user.GET("/transaction/:id", transactionController.GetTransactionByIdController)  // Ambil transaksi berdasarkan ID      // Buat transaksi baru
 
 	// ====== USER TRANSACTION HISTORY =======
 	user.GET("/transaction-histories", transactionHistoryController.GetHistoriesByUserIdController) // Ambil semua riwayat transaksi user

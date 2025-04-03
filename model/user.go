@@ -25,9 +25,10 @@ func (u *UUIDPrimaryKey) BeforeCreate(tx *gorm.DB) (err error) {
 
 type User struct {
 	UUIDPrimaryKey
-	Name     string `gorm:"type:varchar(100)" json:"name"`
-	Email    string `gorm:"type:varchar(100)" json:"email"`
-	Password string `gorm:"type:varchar(100)" json:"password"`
-	Phone    string `gorm:"type:varchar(100)" json:"phone"`
-	UserType string `gorm:"type:varchar(100)" json:"user_type"`
+	Name     string  `gorm:"type:varchar(100)" json:"name"`
+	Email    string  `gorm:"type:varchar(100)" json:"email"`
+	Amount   float64 `gorm:"type:decimal(12)" json:"amount"`
+	Password string  `gorm:"type:varchar(100)" json:"password"`
+	Phone    string  `gorm:"type:varchar(100)" json:"phone"`
+	UserType string  `gorm:"type:varchar(100)" json:"user_type"`
 }

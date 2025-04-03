@@ -79,7 +79,6 @@ func (r *transactionHistoryRepository) CreateHistoryFromTransaction(transaction 
 		TransactionId: transaction.Id,
 		Amount:        transaction.TotalPrice,
 		Status:        transaction.Status,
-		PaymentMethod: transaction.Method,
 		PaymentDate:   transaction.TransactionDate,
 	}
 	result := r.db.Create(history)

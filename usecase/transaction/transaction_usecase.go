@@ -9,8 +9,7 @@ import (
 )
 
 type TransactionUseCase interface {
-	CreateTransactionUseCase(transaction *model.Transaction) (*model.Transaction, error)
-	GetAllTransactionUseCase(page, limit int, userId, itemId, billSemesterId string) ([]*model.Transaction, error)
+	GetAllTransactionUseCase(page, limit int) ([]*model.Transaction, error)
 	GetTransactionByIdUseCase(transactionId string) (*model.Transaction, error)
 	GetTransactionByUserIdUseCase(userId string, page, limit int) ([]*model.Transaction, error)
 	GetTransactionByQueryUseCase(query string, page, limit int) ([]*model.Transaction, error)
@@ -29,28 +28,9 @@ func NewTransactionUseCase(transactionRepository repository.TransactionRepositor
 	}
 }
 
-// CreateTransactionUseCase membuat transaksi baru
-func (uc *transactionUseCase) CreateTransactionUseCase(transaction *model.Transaction) (*model.Transaction, error) {
-	// Validasi bahwa item-item yang terkait valid
-	if len(transaction.Items) > 0 {
-		for _, item := range transaction.Items {
-			if item.Code == "" {
-				return nil, errors.New("item code is required for each item in the transaction")
-			}
-		}
-	}
-
-	// Buat transaksi
-	createdTransaction, err := uc.transactionRepository.CreateTransactionRepository(transaction)
-	if err != nil {
-		return nil, fmt.Errorf("error creating transaction in database: %w", err)
-	}
-	return createdTransaction, nil
-}
-
 // GetAllTransactionUseCase mengambil semua transaksi dengan filter userId, itemId, dan billSemesterId
-func (uc *transactionUseCase) GetAllTransactionUseCase(page, limit int, userId, itemId, billSemesterId string) ([]*model.Transaction, error) {
-	transactions, err := uc.transactionRepository.GetAllTransactionsRepository(page, limit, userId, itemId, billSemesterId)
+func (uc *transactionUseCase) GetAllTransactionUseCase(page, limit int) ([]*model.Transaction, error) {
+	transactions, err := uc.transactionRepository.GetAllTransactionsRepository(page, limit)
 	if err != nil {
 		return nil, err
 	}

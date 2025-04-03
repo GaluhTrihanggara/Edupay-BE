@@ -14,9 +14,10 @@ type BillSemesterController interface {
 	CreateBillSemesterController(c echo.Context) error
 	GetAllBillSemesterController(c echo.Context) error
 	GetBillSemesterByIdController(c echo.Context) error
+	GetBillsByStudentIdController(c echo.Context) error
+	GetAllUnpaidBillsController(c echo.Context) error
 	UpdateBillSemesterByIdController(c echo.Context) error
 	DeleteBillSemesterByIdController(c echo.Context) error
-	CreateBillSemesterTransactionController(c echo.Context) error // NEW
 }
 
 type billSemesterController struct {
@@ -54,63 +55,6 @@ func (ctrl *billSemesterController) CreateBillSemesterController(c echo.Context)
 			Message:    "Succesfully created Bill Semester",
 		},
 		Data: response,
-	})
-}
-
-// CreateBillSemesterTransactionController membuat transaksi untuk tagihan semester
-func (ctrl *billSemesterController) CreateBillSemesterTransactionController(c echo.Context) error {
-	billSemesterId := c.Param("id")
-	if billSemesterId == "" {
-		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    "Invalid Bill Semester Id",
-		})
-	}
-
-	// Ambil data tagihan semester
-	billSemester, err := ctrl.billSemesterUseCase.GetBillSemesterByIdUseCase(billSemesterId)
-	if err != nil {
-		return c.JSON(http.StatusNotFound, model.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    err.Error(),
-		})
-	}
-
-	// Buat transaksi baru berdasarkan tagihan semester
-	transactionPayload := &model.Transaction{
-		UserId:          billSemester.StudentId,
-		BillSemesterId:  &billSemesterId,
-		TotalPrice:      billSemester.Amount,
-		Status:          model.STATUS_UNPAID,
-		Description:     "Payment for semester bill",
-		TransactionDate: billSemester.DueDate,
-		Method:          "Manual Payment", // Metode pembayaran dapat diatur sesuai kebutuhan
-	}
-
-	transaction, err := ctrl.transactionUseCase.CreateTransactionUseCase(transactionPayload)
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    "Failed to create transaction: " + err.Error(),
-		})
-	}
-
-	// Perbarui tagihan semester dengan ID transaksi yang baru dibuat
-	billSemester.TransactionId = &transaction.Id
-	_, err = ctrl.billSemesterUseCase.UpdateBillSemesterByIdUseCase(billSemesterId, billSemester)
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    "Failed to update bill semester with transaction: " + err.Error(),
-		})
-	}
-
-	return c.JSON(http.StatusOK, model.HttpResponse{
-		MetaData: model.MetaData{
-			StatusCode: http.StatusOK,
-			Message:    "Successfully created transaction for Bill Semester",
-		},
-		Data: transaction,
 	})
 }
 
@@ -172,6 +116,18 @@ func (ctrl *billSemesterController) GetBillSemesterByIdController(c echo.Context
 	})
 }
 
+func (ctrl *billSemesterController) GetBillsByStudentIdController(c echo.Context) error {
+	studentID := c.Param("student_id")
+	response, err := ctrl.billSemesterUseCase.GetBillsByStudentIdUseCase(studentID)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    err.Error(),
+		})
+	}
+	return c.JSON(http.StatusOK, response)
+}
+
 // UpdateBillSemesterByIdController memperbarui tagihan semester berdasarkan ID
 func (ctrl *billSemesterController) UpdateBillSemesterByIdController(c echo.Context) error {
 	billSemesterId := c.Param("id")
@@ -202,6 +158,17 @@ func (ctrl *billSemesterController) UpdateBillSemesterByIdController(c echo.Cont
 		},
 		Data: response,
 	})
+}
+
+func (ctrl *billSemesterController) GetAllUnpaidBillsController(c echo.Context) error {
+	response, err := ctrl.billSemesterUseCase.GetAllUnpaidBillsUseCase()
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    err.Error(),
+		})
+	}
+	return c.JSON(http.StatusOK, response)
 }
 
 // DeleteBillSemesterByIdController menghapus tagihan semester berdasarkan ID

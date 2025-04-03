@@ -10,7 +10,6 @@ import (
 )
 
 type TransactionController interface {
-	CreateTransactionController(c echo.Context) error
 	GetAllTransactionsController(c echo.Context) error
 	GetTransactionByIdController(c echo.Context) error
 	GetTransactionByUserIdController(c echo.Context) error
@@ -27,32 +26,6 @@ func NewTransactionController(transactionUseCase transaction.TransactionUseCase)
 	}
 }
 
-// CreateTransactionController membuat transaksi baru
-func (ctrl *transactionController) CreateTransactionController(c echo.Context) error {
-	var payload model.Transaction
-	if err := c.Bind(&payload); err != nil {
-		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    "Invalid request payload",
-		})
-	}
-
-	response, err := ctrl.transactionUseCase.CreateTransactionUseCase(&payload)
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    err.Error(),
-		})
-	}
-	return c.JSON(http.StatusOK, model.HttpResponse{
-		MetaData: model.MetaData{
-			StatusCode: http.StatusOK,
-			Message:    "Transaction successfully created",
-		},
-		Data: response,
-	})
-}
-
 // GetAllTransactionController mengambil semua transaksi dengan filter
 func (ctrl *transactionController) GetAllTransactionsController(c echo.Context) error {
 	page, err := strconv.Atoi(c.QueryParam("page"))
@@ -63,11 +36,8 @@ func (ctrl *transactionController) GetAllTransactionsController(c echo.Context) 
 	if err != nil {
 		limit = 10
 	}
-	userId := c.QueryParam("user_id")
-	itemId := c.QueryParam("item_id")
-	billSemesterId := c.QueryParam("bill_semester_id")
 
-	response, err := ctrl.transactionUseCase.GetAllTransactionUseCase(page, limit, userId, itemId, billSemesterId)
+	response, err := ctrl.transactionUseCase.GetAllTransactionUseCase(page, limit)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
