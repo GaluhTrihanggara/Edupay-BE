@@ -5,37 +5,18 @@ import (
 	"Edupay/usecase/book"
 	"net/http"
 	"strconv"
-	"strings"
 
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
-
-// Updated helper function to format price in Rupiah
-func formatRupiah(price float64) string {
-	// Use strconv to handle thousand separators
-	priceStr := strconv.FormatFloat(price, 'f', 2, 64)
-	parts := strings.Split(priceStr, ".")
-
-	// Add thousand separators
-	for i := len(parts[0]) - 3; i > 0; i -= 3 {
-		parts[0] = parts[0][:i] + "." + parts[0][i:]
-	}
-
-	return "Rp " + parts[0] + "," + parts[1]
-}
-
-// Modify the Book struct to add a formatted price field
-type BookResponse struct {
-	model.Book
-	FormattedPrice string `json:"formatted_price"`
-}
 
 type BookController interface {
 	CreateBookController(c echo.Context) error
 	GetAllBooksController(c echo.Context) error
 	GetBookByIdController(c echo.Context) error
-	UpdateBookByIdController(c echo.Context) error
-	DeleteBookByIdController(c echo.Context) error
+	GetBookByCodeController(echo.Context) error
+	UpdateBookByIDController(c echo.Context) error
+	DeleteBookByIDController(c echo.Context) error
 }
 
 type bookController struct {
@@ -48,7 +29,7 @@ func NewBookController(bookUseCase book.BookUseCase) *bookController {
 	}
 }
 
-// CreateBookController membuat buku baru
+// CreateBookController creates a new book entry
 func (ctrl *bookController) CreateBookController(c echo.Context) error {
 	var payload model.Book
 	if err := c.Bind(&payload); err != nil {
@@ -58,7 +39,7 @@ func (ctrl *bookController) CreateBookController(c echo.Context) error {
 		})
 	}
 
-	// Validasi kode buku
+	// Validate Code Book
 	if payload.Code == "" {
 		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -68,12 +49,12 @@ func (ctrl *bookController) CreateBookController(c echo.Context) error {
 
 	response, err := ctrl.bookUseCase.CreateBookUseCase(&payload)
 	if err != nil {
+
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    err.Error(),
 		})
 	}
-
 	return c.JSON(http.StatusOK, model.HttpResponse{
 		MetaData: model.MetaData{
 			StatusCode: http.StatusOK,
@@ -83,7 +64,7 @@ func (ctrl *bookController) CreateBookController(c echo.Context) error {
 	})
 }
 
-// GetAllBooksController mengambil semua buku
+// GetAllBooksController retrieves all books with filters
 func (ctrl *bookController) GetAllBooksController(c echo.Context) error {
 	page, err := strconv.Atoi(c.QueryParam("page"))
 	if err != nil {
@@ -93,10 +74,11 @@ func (ctrl *bookController) GetAllBooksController(c echo.Context) error {
 	if err != nil {
 		limit = 10
 	}
-	title := c.QueryParam("title")
-	code := c.QueryParam("code") // Menambahkan pencarian berdasarkan kode
 
-	response, err := ctrl.bookUseCase.GetAllBookUseCase(page, limit, title, code)
+	title := c.QueryParam("title")
+	class := c.QueryParam("class")
+
+	response, err := ctrl.bookUseCase.GetAllBookUseCase(page, limit, title, class)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -104,20 +86,12 @@ func (ctrl *bookController) GetAllBooksController(c echo.Context) error {
 		})
 	}
 
-	var bookResponses []BookResponse
-	for _, book := range response {
-		bookResponses = append(bookResponses, BookResponse{
-			Book:           *book,
-			FormattedPrice: formatRupiah(book.Price),
-		})
-	}
-
 	return c.JSON(http.StatusOK, model.HttpResponse{
 		MetaData: model.MetaData{
 			StatusCode: http.StatusOK,
-			Message:    "Successfully retrieved books",
+			Message:    "Successfully retrieved Books",
 		},
-		Data: bookResponses,
+		Data: response,
 		Pagination: &model.Pagination{
 			Page:  page,
 			Limit: limit,
@@ -125,17 +99,18 @@ func (ctrl *bookController) GetAllBooksController(c echo.Context) error {
 	})
 }
 
-// GetBookByIdController mengambil buku berdasarkan ID
-func (ctrl *bookController) GetBookByIdController(c echo.Context) error {
-	bookId := c.Param("id")
-	if bookId == "" {
+// GetBookByIdController retrieves a book by ID
+func (ctrl *bookController) GetBookByIDController(c echo.Context) error {
+	bookIdStr := c.Param("id")
+	bookId, err := uuid.Parse(bookIdStr)
+	if err != nil {
 		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
-			Message:    "Invalid book ID",
+			Message:    "Invalid Book ID",
 		})
 	}
 
-	response, err := ctrl.bookUseCase.GetBookByIdUseCase(bookId)
+	response, err := ctrl.bookUseCase.GetBookByIDUseCase(bookId)
 	if err != nil {
 		return c.JSON(http.StatusNotFound, model.ErrorResponse{
 			StatusCode: http.StatusNotFound,
@@ -143,27 +118,49 @@ func (ctrl *bookController) GetBookByIdController(c echo.Context) error {
 		})
 	}
 
-	bookResponse := BookResponse{
-		Book:           *response,
-		FormattedPrice: formatRupiah(response.Price),
+	return c.JSON(http.StatusOK, model.HttpResponse{
+		MetaData: model.MetaData{
+			StatusCode: http.StatusOK,
+			Message:    "Successfully retrieved Book",
+		},
+		Data: response,
+	})
+}
+
+func (ctrl *bookController) GetBookByCodeController(c echo.Context) error {
+	bookCode := c.Param("code")
+	if bookCode == "" {
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "Invalid book code",
+		})
+	}
+
+	response, err := ctrl.bookUseCase.GetBookByCodeUseCase(bookCode)
+	if err != nil {
+		return c.JSON(http.StatusNotFound, model.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    err.Error(),
+		})
 	}
 
 	return c.JSON(http.StatusOK, model.HttpResponse{
 		MetaData: model.MetaData{
 			StatusCode: http.StatusOK,
-			Message:    "Successfully retrieved book",
+			Message:    "Succesfully retrieved Book",
 		},
-		Data: bookResponse,
+		Data: response,
 	})
 }
 
-// UpdateBookByIdController memperbarui buku berdasarkan ID
-func (ctrl *bookController) UpdateBookByIdController(c echo.Context) error {
-	bookId := c.Param("id")
-	if bookId == "" {
+// UpdateBookByIdController updates book information by ID
+func (ctrl *bookController) UpdateBookByIDController(c echo.Context) error {
+	bookIdStr := c.Param("id")
+	bookId, err := uuid.Parse(bookIdStr)
+	if err != nil {
 		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
-			Message:    "Invalid book ID",
+			Message:    "Invalid Book ID",
 		})
 	}
 
@@ -175,7 +172,7 @@ func (ctrl *bookController) UpdateBookByIdController(c echo.Context) error {
 		})
 	}
 
-	response, err := ctrl.bookUseCase.UpdateBookByIdUseCase(bookId, &payload)
+	response, err := ctrl.bookUseCase.UpdateBookByIDUseCase(bookId, &payload)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -186,23 +183,24 @@ func (ctrl *bookController) UpdateBookByIdController(c echo.Context) error {
 	return c.JSON(http.StatusOK, model.HttpResponse{
 		MetaData: model.MetaData{
 			StatusCode: http.StatusOK,
-			Message:    "Successfully updated book",
+			Message:    "Successfully updated Book",
 		},
 		Data: response,
 	})
 }
 
-// DeleteBookByIdController menghapus buku berdasarkan ID
-func (ctrl *bookController) DeleteBookByIdController(c echo.Context) error {
-	bookId := c.Param("id")
-	if bookId == "" {
+// DeleteBookByIdController deletes a book by ID
+func (ctrl *bookController) DeleteBookByIDController(c echo.Context) error {
+	bookIdStr := c.Param("id")
+	bookId, err := uuid.Parse(bookIdStr)
+	if err != nil {
 		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
-			Message:    "Invalid book ID",
+			Message:    "Invalid Book ID",
 		})
 	}
 
-	err := ctrl.bookUseCase.DeleteBookByIdUseCase(bookId)
+	err = ctrl.bookUseCase.DeleteBookByIDUseCase(bookId)
 	if err != nil {
 		return c.JSON(http.StatusNotFound, model.ErrorResponse{
 			StatusCode: http.StatusNotFound,
@@ -213,7 +211,7 @@ func (ctrl *bookController) DeleteBookByIdController(c echo.Context) error {
 	return c.JSON(http.StatusOK, model.HttpResponse{
 		MetaData: model.MetaData{
 			StatusCode: http.StatusOK,
-			Message:    "Successfully deleted book",
+			Message:    "Successfully deleted Book",
 		},
 	})
 }

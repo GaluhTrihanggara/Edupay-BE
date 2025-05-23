@@ -5,62 +5,28 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
-// BookRepository adalah interface untuk operasi CRUD pada entitas Book
 type BookRepository interface {
-	GetAllBooksRepository(page, limit int, title, code string) ([]*model.Book, error)
-	GetBookByIdRepository(id string) (*model.Book, error)
 	CreateBookRepository(book *model.Book) (*model.Book, error)
-	UpdateBookByIdRepository(id string, book *model.Book) (*model.Book, error)
-	DeleteBookByIdRepository(id string) error
+	GetBookByIDRepository(ID uuid.UUID) (*model.Book, error)
+	GetBookByCodeRepository(code string) (*model.Book, error)
+	GetAllBooksRepository(page, limit int, title, class string) ([]*model.Book, error)
+	GetAvailableBooksRepository(page, limit int) ([]*model.Book, error)
+	UpdateBookByIDRepository(ID uuid.UUID, book *model.Book) (*model.Book, error)
+	DeleteBookByIDRepository(ID uuid.UUID) error
 }
 
-// bookRepository adalah struct yang mengimplementasikan BookRepository
 type bookRepository struct {
 	db *gorm.DB
 }
 
-// NewBookRepository membuat instance baru dari bookRepository
-func NewBookRepository(db *gorm.DB) *bookRepository {
-	return &bookRepository{db}
+func NewBookRepository(db *gorm.DB) BookRepository {
+	return &bookRepository{db: db}
 }
 
-// GetAllBooksRepository mengambil semua buku dengan pagination dan pencarian berdasarkan judul
-func (r *bookRepository) GetAllBooksRepository(page, limit int, title, code string) ([]*model.Book, error) {
-	var books []*model.Book
-	offset := (page - 1) * limit
-
-	query := r.db.Offset(offset).Limit(limit)
-	if title != "" {
-		query = query.Where("title LIKE ?", "%"+title+"%")
-	}
-	if code != "" {
-		query = query.Where("code LIKE ?", "%"+code+"%")
-	}
-
-	result := query.Order("created_at DESC").Find(&books)
-	if result.Error != nil {
-		return nil, fmt.Errorf("error getting books: %s", result.Error)
-	}
-	return books, nil
-}
-
-// GetBookByIDRepository mengambil buku berdasarkan ID
-func (r *bookRepository) GetBookByIdRepository(id string) (*model.Book, error) {
-	var book model.Book
-	result := r.db.First(&book, "id = ?", id)
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("book with ID %s not found", id)
-		}
-		return nil, fmt.Errorf("error getting book with ID %s: %s", id, result.Error)
-	}
-	return &book, nil
-}
-
-// CreateBookRepository membuat buku baru
 func (r *bookRepository) CreateBookRepository(book *model.Book) (*model.Book, error) {
 	var existingBook model.Book
 	if err := r.db.Where("code = ?", book.Code).First(&existingBook).Error; err == nil {
@@ -74,31 +40,68 @@ func (r *bookRepository) CreateBookRepository(book *model.Book) (*model.Book, er
 	return book, nil
 }
 
-// UpdateBookByIDRepository memperbarui data buku berdasarkan ID
-func (r *bookRepository) UpdateBookByIdRepository(id string, book *model.Book) (*model.Book, error) {
-	var existingBook model.Book
-	if err := r.db.Where("code = ? AND id != ?", book.Code, id).First(&existingBook).Error; err == nil {
-		return nil, fmt.Errorf("book with code %s already exists", book.Code)
+func (r *bookRepository) GetBookByIDRepository(ID uuid.UUID) (*model.Book, error) {
+	var book model.Book
+	if err := r.db.First(&book, "id = ?", ID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("book not found")
+		}
+		return nil, fmt.Errorf("failed to get book: %v", err)
+	}
+	return &book, nil
+}
+
+func (r *bookRepository) GetBookByCodeRepository(code string) (*model.Book, error) {
+	var book model.Book
+	if err := r.db.First(&book, "code = ?", code).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to check book code: %v", err)
+	}
+	return &book, nil
+}
+
+func (r *bookRepository) GetAllBooksRepository(page, limit int, title, class string) ([]*model.Book, error) {
+	var books []*model.Book
+	query := r.db.Where("quantity > 0")
+	if title != "" {
+		query = query.Where("title LIKE ?", "%"+title+"%")
 	}
 
-	result := r.db.Model(&model.Book{}).Where("id = ?", id).Updates(book)
-	if result.Error != nil {
-		return nil, result.Error
+	if class != "" {
+		query = query.Where("class = ?", class)
 	}
-	if result.RowsAffected == 0 {
-		return nil, errors.New("book not found")
+
+	err := query.Offset((page - 1) * limit).
+		Limit(limit).
+		Order("created_at DESC").
+		Find(&books).Error
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get books: %w", err)
+	}
+	return books, nil
+}
+
+func (r *bookRepository) GetAvailableBooksRepository(page, limit int) ([]*model.Book, error) {
+	var books []*model.Book
+	if err := r.db.Where("quantity > 0").Offset((page - 1) * limit).Limit(limit).Find(&books).Error; err != nil {
+		return nil, fmt.Errorf("failed to retrieve books: %v", err)
+	}
+	return books, nil
+}
+
+func (r *bookRepository) UpdateBookByIDRepository(ID uuid.UUID, book *model.Book) (*model.Book, error) {
+	if err := r.db.Model(&model.Book{}).Where("id = ?", ID).Updates(book).Error; err != nil {
+		return nil, fmt.Errorf("failed to update book: %v", err)
 	}
 	return book, nil
 }
 
-// DeleteBookByIDRepository menghapus buku berdasarkan ID
-func (r *bookRepository) DeleteBookByIdRepository(id string) error {
-	result := r.db.Delete(&model.Book{}, "id = ?", id)
-	if result.Error != nil {
-		return result.Error
-	}
-	if result.RowsAffected == 0 {
-		return errors.New("book not found")
+func (r *bookRepository) DeleteBookByIDRepository(ID uuid.UUID) error {
+	if err := r.db.Delete(&model.Book{}, "id = ?", ID).Error; err != nil {
+		return fmt.Errorf("failed to delete book: %v", err)
 	}
 	return nil
 }

@@ -5,14 +5,17 @@ import (
 	"Edupay/repository"
 	"errors"
 	"fmt"
+
+	"github.com/google/uuid"
 )
 
 type BookUseCase interface {
 	CreateBookUseCase(payload *model.Book) (*model.Book, error)
-	GetAllBookUseCase(page, limit int, title, code string) ([]*model.Book, error)
-	GetBookByIdUseCase(bookId string) (*model.Book, error)
-	UpdateBookByIdUseCase(bookId string, payload *model.Book) (*model.Book, error)
-	DeleteBookByIdUseCase(bookId string) error
+	GetAllBookUseCase(page, limit int, title, class string) ([]*model.Book, error)
+	GetBookByIDUseCase(bookId uuid.UUID) (*model.Book, error)
+	GetBookByCodeUseCase(code string) (*model.Book, error)
+	UpdateBookByIDUseCase(bookId uuid.UUID, payload *model.Book) (*model.Book, error)
+	DeleteBookByIDUseCase(bookId uuid.UUID) error
 }
 
 type bookUseCase struct {
@@ -25,15 +28,15 @@ func NewBookUseCase(bookRepository repository.BookRepository) *bookUseCase {
 	}
 }
 
-// CreateBookUseCase membuat buku baru
+// CreateBookUseCase creates a new book
 func (uc *bookUseCase) CreateBookUseCase(payload *model.Book) (*model.Book, error) {
-	// Validasi unik kode buku
-	book, err := uc.bookRepository.GetAllBooksRepository(1, 1, "", payload.Code)
+	// Validate unique title or code if needed (assuming `Title` is unique)
+	book, err := uc.bookRepository.GetAllBooksRepository(1, 1, "", payload.Class) // Check if book already exists
 	if err == nil && len(book) > 0 {
-		return nil, fmt.Errorf("book with code %s already exists", payload.Code)
+		return nil, fmt.Errorf("book with class %s already exists", payload.Class)
 	}
 
-	// Buat buku baru
+	// Save new book
 	createdBook, err := uc.bookRepository.CreateBookRepository(payload)
 	if err != nil {
 		return nil, fmt.Errorf("error creating book in database: %w", err)
@@ -41,65 +44,76 @@ func (uc *bookUseCase) CreateBookUseCase(payload *model.Book) (*model.Book, erro
 	return createdBook, nil
 }
 
-// GetAllBookUseCase mengambil semua buku dengan filter title dan code
-func (uc *bookUseCase) GetAllBookUseCase(page, limit int, title, code string) ([]*model.Book, error) {
-	books, err := uc.bookRepository.GetAllBooksRepository(page, limit, title, code)
+// GetAllBookUseCase retrieves all books with pagination
+func (uc *bookUseCase) GetAllBookUseCase(page, limit int, title, class string) ([]*model.Book, error) {
+	books, err := uc.bookRepository.GetAllBooksRepository(page, limit, title, class)
 	if err != nil {
 		return nil, err
 	}
 	return books, nil
 }
 
-// GetBookByIdUseCase mengambil buku berdasarkan ID
-func (uc *bookUseCase) GetBookByIdUseCase(bookId string) (*model.Book, error) {
-	book, err := uc.bookRepository.GetBookByIdRepository(bookId)
+// GetBookByIdUseCase retrieves a book by ID
+func (uc *bookUseCase) GetBookByIDUseCase(bookId uuid.UUID) (*model.Book, error) {
+	book, err := uc.bookRepository.GetBookByIDRepository(bookId)
 	if err != nil {
 		return nil, errors.New("book not found")
 	}
 	return book, nil
 }
 
-// UpdateBookByIdUseCase memperbarui data buku berdasarkan ID
-func (uc *bookUseCase) UpdateBookByIdUseCase(bookId string, payload *model.Book) (*model.Book, error) {
-	// Validasi keberadaan buku
-	existingBook, err := uc.bookRepository.GetBookByIdRepository(bookId)
+func (uc *bookUseCase) GetBookByCodeUseCase(code string) (*model.Book, error) {
+	book, err := uc.bookRepository.GetBookByCodeRepository(code)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get book by code %s: %w", code, err)
+	}
+	if book == nil {
+		return nil, fmt.Errorf("book with code %s not found", code)
+	}
+	return book, nil
+}
+
+// UpdateBookByIdUseCase updates book information by ID
+func (uc *bookUseCase) UpdateBookByIDUseCase(bookId uuid.UUID, payload *model.Book) (*model.Book, error) {
+	// Validate book existence
+	existingBook, err := uc.bookRepository.GetBookByIDRepository(bookId)
 	if err != nil {
 		return nil, fmt.Errorf("book with ID %s not found: %v", bookId, err)
 	}
 
-	// Validasi unik kode buku jika diperbarui
+	// Validate unique title if it's updated
 	if payload.Code != existingBook.Code {
-		books, err := uc.bookRepository.GetAllBooksRepository(1, 1, "", payload.Code)
-		if err == nil && len(books) > 0 {
+		bookWithCode, err := uc.bookRepository.GetAllBooksRepository(1, 1, payload.Class, payload.Class)
+		if err == nil && len(bookWithCode) > 0 {
 			return nil, fmt.Errorf("book with code %s already exists", payload.Code)
 		}
 	}
 
-	// Perbarui data buku
+	// Update book fields
+	existingBook.Code = payload.Code
 	existingBook.Title = payload.Title
 	existingBook.Class = payload.Class
 	existingBook.Author = payload.Author
 	existingBook.Price = payload.Price
-	existingBook.Stock = payload.Stock
-	existingBook.Code = payload.Code
+	existingBook.Quantity = payload.Quantity
 
-	updatedBook, err := uc.bookRepository.UpdateBookByIdRepository(bookId, existingBook)
+	updatedBook, err := uc.bookRepository.UpdateBookByIDRepository(bookId, existingBook)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update book: %w", err)
 	}
 	return updatedBook, nil
 }
 
-// DeleteBookByIdUseCase menghapus buku berdasarkan ID
-func (uc *bookUseCase) DeleteBookByIdUseCase(bookId string) error {
-	// Validasi keberadaan buku sebelum dihapus
-	_, err := uc.bookRepository.GetBookByIdRepository(bookId)
+// DeleteBookByIdUseCase deletes a book by ID
+func (uc *bookUseCase) DeleteBookByIDUseCase(bookId uuid.UUID) error {
+	// Validate book existence before deletion
+	_, err := uc.bookRepository.GetBookByIDRepository(bookId)
 	if err != nil {
 		return fmt.Errorf("book with ID %s not found: %v", bookId, err)
 	}
 
-	// Hapus buku
-	err = uc.bookRepository.DeleteBookByIdRepository(bookId)
+	// Delete book
+	err = uc.bookRepository.DeleteBookByIDRepository(bookId)
 	if err != nil {
 		return fmt.Errorf("failed to delete book: %v", err)
 	}

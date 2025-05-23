@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
 
@@ -13,6 +14,7 @@ type ShirtController interface {
 	CreateShirtController(c echo.Context) error
 	GetAllShirtsController(c echo.Context) error
 	GetShirtByIdController(c echo.Context) error
+	GetShirtByCodeController(c echo.Context) error
 	UpdateShirtByIdController(c echo.Context) error
 	DeleteShirtByIdController(c echo.Context) error
 }
@@ -73,10 +75,9 @@ func (ctrl *shirtController) GetAllShirtsController(c echo.Context) error {
 		limit = 10
 	}
 	name := c.QueryParam("name")
-	size := c.QueryParam("size")
-	code := c.QueryParam("code") // Tambahan filter berdasarkan kode
+	size := c.QueryParam("size") // Tambahan filter berdasarkan kode
 
-	response, err := ctrl.shirtUseCase.GetAllShirtUseCase(page, limit, name, size, code)
+	response, err := ctrl.shirtUseCase.GetAllShirtUseCase(page, limit, name, size)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -99,15 +100,16 @@ func (ctrl *shirtController) GetAllShirtsController(c echo.Context) error {
 
 // GetShirtByIdController mengambil kaos berdasarkan ID
 func (ctrl *shirtController) GetShirtByIdController(c echo.Context) error {
-	shirtId := c.Param("id")
-	if shirtId == "" {
+	shirtIDStr := c.Param("id")
+	shirtID, err := uuid.Parse(shirtIDStr)
+	if err != nil {
 		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "Invalid Shirt ID",
 		})
 	}
 
-	response, err := ctrl.shirtUseCase.GetShirtByIdUseCase(shirtId)
+	response, err := ctrl.shirtUseCase.GetShirtByIdUseCase(shirtID)
 	if err != nil {
 		return c.JSON(http.StatusNotFound, model.ErrorResponse{
 			StatusCode: http.StatusNotFound,
@@ -124,10 +126,37 @@ func (ctrl *shirtController) GetShirtByIdController(c echo.Context) error {
 	})
 }
 
+func (ctrl *shirtController) GetShirtByCodeController(c echo.Context) error {
+	shirtCode := c.Param("code")
+	if shirtCode == "" {
+		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "Invalid book code",
+		})
+	}
+
+	response, err := ctrl.shirtUseCase.GetShirtByCodeUseCase(shirtCode)
+	if err != nil {
+		return c.JSON(http.StatusNotFound, model.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    err.Error(),
+		})
+	}
+
+	return c.JSON(http.StatusOK, model.HttpResponse{
+		MetaData: model.MetaData{
+			StatusCode: http.StatusOK,
+			Message:    "Succesfully retrieved Book",
+		},
+		Data: response,
+	})
+}
+
 // UpdateShirtByIdController memperbarui data kaos berdasarkan ID
 func (ctrl *shirtController) UpdateShirtByIdController(c echo.Context) error {
-	shirtId := c.Param("id")
-	if shirtId == "" {
+	shirtIDStr := c.Param("id")
+	shirtID, err := uuid.Parse(shirtIDStr)
+	if err != nil {
 		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "Invalid Shirt ID",
@@ -142,7 +171,7 @@ func (ctrl *shirtController) UpdateShirtByIdController(c echo.Context) error {
 		})
 	}
 
-	response, err := ctrl.shirtUseCase.UpdateShirtByIdUseCase(shirtId, &payload)
+	response, err := ctrl.shirtUseCase.UpdateShirtByIdUseCase(shirtID, &payload)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -161,15 +190,16 @@ func (ctrl *shirtController) UpdateShirtByIdController(c echo.Context) error {
 
 // DeleteShirtByIdController menghapus kaos berdasarkan ID
 func (ctrl *shirtController) DeleteShirtByIdController(c echo.Context) error {
-	shirtId := c.Param("id")
-	if shirtId == "" {
+	shirtIDStr := c.Param("id")
+	shirtID, err := uuid.Parse(shirtIDStr)
+	if err != nil {
 		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "Invalid Shirt ID",
 		})
 	}
 
-	err := ctrl.shirtUseCase.DeleteShirtByIdUseCase(shirtId)
+	err = ctrl.shirtUseCase.DeleteShirtByIdUseCase(shirtID)
 	if err != nil {
 		return c.JSON(http.StatusNotFound, model.ErrorResponse{
 			StatusCode: http.StatusNotFound,
