@@ -1,4 +1,4 @@
-package user
+package users
 
 import (
 	"Edupay/model"
@@ -7,16 +7,18 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type UserUseCase interface {
 	GetAllUsersUseCase(page, limit int, name string) ([]*model.UserResponse, error)
-	GetUserByIdUseCase(userId string) (*model.UserResponse, error)
+	GetUserByIdUseCase(userId uuid.UUID) (*model.UserResponse, error)
 	GetUserByPhoneUseCase(phone string) (*model.UserResponse, error)
 	GetUserByEmailUseCase(email string) (*model.UserResponse, error)
 	GetUserByQueryUseCase(query string, page, limit int) ([]*model.User, error)
-	UpdateUserByIdUseCase(userId string, payload *model.User) (*model.UserResponse, error)
-	DeleteUserByIdUseCase(userId string) error
+	UpdateUserByIdUseCase(userId uuid.UUID, payload *model.User) (*model.UserResponse, error)
+	DeleteUserByIdUseCase(userId uuid.UUID) error
 }
 
 type userUseCase struct {
@@ -49,7 +51,7 @@ func (uc *userUseCase) GetAllUsersUseCase(page, limit int, name string) ([]*mode
 	return resp, nil
 }
 
-func (uc *userUseCase) GetUserByIdUseCase(userId string) (*model.UserResponse, error) {
+func (uc *userUseCase) GetUserByIdUseCase(userId uuid.UUID) (*model.UserResponse, error) {
 	user, err := uc.userRepository.GetUserByIdRepository(userId)
 	if err != nil {
 		return nil, errors.New("user not found")
@@ -60,6 +62,7 @@ func (uc *userUseCase) GetUserByIdUseCase(userId string) (*model.UserResponse, e
 		Name:      user.Name,
 		Email:     user.Email,
 		Phone:     user.Phone,
+		UserType:  user.UserType,
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
 	}
@@ -76,6 +79,7 @@ func (uc *userUseCase) GetUserByPhoneUseCase(phone string) (*model.UserResponse,
 		Name:      user.Name,
 		Email:     user.Email,
 		Phone:     user.Phone,
+		UserType:  user.UserType,
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
 	}
@@ -87,15 +91,17 @@ func (uc *userUseCase) GetUserByEmailUseCase(email string) (*model.UserResponse,
 	if err != nil {
 		return nil, errors.New("user not found")
 	}
-	resp := &model.UserResponse{
+
+	response := &model.UserResponse{
 		Id:        user.ID,
 		Name:      user.Name,
 		Email:     user.Email,
 		Phone:     user.Phone,
+		UserType:  user.UserType,
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
 	}
-	return resp, nil
+	return response, nil
 }
 
 func (uc *userUseCase) GetUserByQueryUseCase(query string, page, limit int) ([]*model.User, error) {
@@ -106,7 +112,7 @@ func (uc *userUseCase) GetUserByQueryUseCase(query string, page, limit int) ([]*
 	return users, nil
 }
 
-func (uc *userUseCase) UpdateUserByIdUseCase(userId string, payload *model.User) (*model.UserResponse, error) {
+func (uc *userUseCase) UpdateUserByIdUseCase(userId uuid.UUID, payload *model.User) (*model.UserResponse, error) {
 	lowercasePayload := &model.User{
 		Name:  strings.ToLower(payload.Name),
 		Email: strings.ToLower(payload.Email),
@@ -138,7 +144,7 @@ func (uc *userUseCase) UpdateUserByIdUseCase(userId string, payload *model.User)
 	return resp, nil
 }
 
-func (uc *userUseCase) DeleteUserByIdUseCase(userId string) error {
+func (uc *userUseCase) DeleteUserByIdUseCase(userId uuid.UUID) error {
 	err := uc.userRepository.DeleteUserByIdRepository(userId)
 	if err != nil {
 		return errors.New("user not found")

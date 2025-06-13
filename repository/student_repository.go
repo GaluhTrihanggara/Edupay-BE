@@ -5,17 +5,18 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 // StudentRepository adalah interface untuk operasi CRUD pada entitas Student
 type StudentRepository interface {
 	GetAllStudentsRepository(page, limit int, name, class string) ([]*model.Student, error)
-	GetStudentByIdRepository(id string) (*model.Student, error)
+	GetStudentByIdRepository(ID uuid.UUID) (*model.Student, error)
 	GetStudentsByParentNameRepository(parentName string) ([]*model.Student, error)
 	CreateStudentRepository(student *model.Student) (*model.Student, error)
-	UpdateStudentByIdRepository(id string, student *model.Student) (*model.Student, error)
-	DeleteStudentByIdRepository(id string) error
+	UpdateStudentByIdRepository(ID uuid.UUID, student *model.Student) (*model.Student, error)
+	DeleteStudentByIdRepository(ID uuid.UUID) error
 }
 
 // studentRepository adalah struct yang mengimplementasikan StudentRepository
@@ -49,14 +50,14 @@ func (r *studentRepository) GetAllStudentsRepository(page, limit int, name, clas
 }
 
 // GetStudentByIDRepository mengambil siswa berdasarkan ID
-func (r *studentRepository) GetStudentByIdRepository(id string) (*model.Student, error) {
+func (r *studentRepository) GetStudentByIdRepository(ID uuid.UUID) (*model.Student, error) {
 	var student model.Student
-	result := r.db.Preload("Parent").First(&student, "id = ?", id)
+	result := r.db.Preload("Parent").First(&student, "id = ?", ID)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("student with ID %s not found", id)
+			return nil, fmt.Errorf("student with ID %s not found", ID)
 		}
-		return nil, fmt.Errorf("error getting student with ID %s: %s", id, result.Error)
+		return nil, fmt.Errorf("error getting student with ID %s: %s", ID, result.Error)
 	}
 	return &student, nil
 }
@@ -85,8 +86,8 @@ func (r *studentRepository) CreateStudentRepository(student *model.Student) (*mo
 }
 
 // UpdateStudentByIDRepository memperbarui data siswa berdasarkan ID
-func (r *studentRepository) UpdateStudentByIdRepository(id string, student *model.Student) (*model.Student, error) {
-	result := r.db.Model(&model.Student{}).Where("id = ?", id).Updates(student)
+func (r *studentRepository) UpdateStudentByIdRepository(ID uuid.UUID, student *model.Student) (*model.Student, error) {
+	result := r.db.Model(&model.Student{}).Where("id = ?", ID).Updates(student)
 	if result.Error != nil {
 		return nil, result.Error
 	}
@@ -97,8 +98,8 @@ func (r *studentRepository) UpdateStudentByIdRepository(id string, student *mode
 }
 
 // DeleteStudentByIDRepository menghapus siswa berdasarkan ID
-func (r *studentRepository) DeleteStudentByIdRepository(id string) error {
-	result := r.db.Delete(&model.Student{}, "id = ?", id)
+func (r *studentRepository) DeleteStudentByIdRepository(ID uuid.UUID) error {
+	result := r.db.Delete(&model.Student{}, "id = ?", ID)
 	if result.Error != nil {
 		return result.Error
 	}

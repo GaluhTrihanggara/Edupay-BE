@@ -4,14 +4,15 @@ import (
 	"Edupay/controller"
 	"Edupay/repository"
 	authusecase "Edupay/usecase/auth"
-	billsemester "Edupay/usecase/bill_semester"
 	"Edupay/usecase/book"
-	"Edupay/usecase/item"
+	"Edupay/usecase/cart"
+	"Edupay/usecase/cart_item"
 	middleware "Edupay/usecase/middlewares"
+	"Edupay/usecase/order"
+	"Edupay/usecase/payment"
+	"Edupay/usecase/payment_history"
 	"Edupay/usecase/shirt"
 	"Edupay/usecase/student"
-	"Edupay/usecase/transaction"
-	transactionhistory "Edupay/usecase/transaction_history"
 	user "Edupay/usecase/users"
 
 	"net/http"
@@ -26,14 +27,6 @@ func Routes(e *echo.Echo, db *gorm.DB) {
 	userRepository := repository.NewUserRepository(db)
 	userUseCase := user.NewUserUseCase(userRepository)
 	userController := controller.NewUserController(userUseCase)
-
-	// Bill Semester
-	BillerOyApiRepository := repository.NewBillerOyApiOyApiRepository()
-	billSemesterRepository := repository.NewBillSemesterRepository(db)
-	transactionRepository := repository.NewTransactionRepository(db)
-	billSemesterUseCase := billsemester.NewBillSemesterUseCase(billSemesterRepository, userRepository, transactionRepository, BillerOyApiRepository)
-	transactionUseCase := transaction.NewTransactionUseCase(transactionRepository)
-	billSemesterController := controller.NewBillSemesterController(billSemesterUseCase, transactionUseCase)
 
 	// Auth
 	authRepository := repository.NewAuthRepository(db)
@@ -50,26 +43,35 @@ func Routes(e *echo.Echo, db *gorm.DB) {
 	shirtUseCase := shirt.NewShirtUseCase(shirtRepository)
 	shirtController := controller.NewShirtController(shirtUseCase)
 
-	// Item
-	itemRepository := repository.NewItemRepository(db, bookRepository, shirtRepository, userRepository)
-	itemUseCase := item.NewItemUseCase(itemRepository, bookRepository, shirtRepository, userRepository)
-	itemController := controller.NewItemController(itemUseCase)
-
 	// Student
 	studentRepository := repository.NewStudentRepository(db)
 	studentUseCase := student.NewStudentUseCase(studentRepository)
 	studentController := controller.NewStudentController(studentUseCase)
 
-	// Transaction
-	transactionRepository = repository.NewTransactionRepository(db)
-	transactionUseCase = transaction.NewTransactionUseCase(transactionRepository)
-	transactionController := controller.NewTransactionController(transactionUseCase)
+	// Cart
+	cartRepository := repository.NewCartRepository(db)
+	cartUseCase := cart.NewCartUseCase(cartRepository)
+	cartController := controller.NewCartController(cartUseCase)
 
-	// Transaction History
-	transactionHistoryRepository := repository.NewTransactionHistoryRepository(db)
-	transactionHistoryUseCase := transactionhistory.NewTransactionHistoryUseCase(transactionHistoryRepository)
-	transactionHistoryController := controller.NewTransactionHistoryController(transactionHistoryUseCase)
+	// Cart Item
+	cartItemRepository := repository.NewCartItemRepository(db)
+	cartItemUseCase := cart_item.NewCartItemUseCase(cartItemRepository, cartRepository)
+	cartItemController := controller.NewCartItemController(cartItemUseCase)
 
+	// Order
+	orderRepository := repository.NewOrderRepository(db)
+	orderUseCase := order.NewOrderUseCase(orderRepository, cartItemRepository)
+	orderController := controller.NewOrderController(orderUseCase)
+
+	// Payment
+	paymentRepository := repository.NewPaymentRepository(db)
+	paymentUseCase := payment.NewPaymentUseCase(paymentRepository, orderRepository)
+	paymentController := controller.NewPaymentController(paymentUseCase)
+
+	// Payment History
+	paymentHistoryRepository := repository.NewPaymentHistoryRepository(db)
+	paymentHistoryUseCase := payment_history.NewPaymentHistoryUseCase(paymentHistoryRepository)
+	paymentHistoryController := controller.NewPaymentHistoryController(paymentHistoryUseCase)
 	e.GET("/", func(c echo.Context) error {
 		return c.HTML(http.StatusOK, `
 			<h1>Welcome to Edupay API</h1>
@@ -87,34 +89,56 @@ func Routes(e *echo.Echo, db *gorm.DB) {
 	api.POST("/register/admin", authController.RegisterAdminController)
 
 	// ====== ADMIN ROLE =======
-	// admin.POST("/bill-semester", billSemesterController.CreateBillSemesterController)
-	admin.GET("/bill-semesters", billSemesterController.GetAllBillSemesterController)
-	admin.GET("/bill-semester/:id", billSemesterController.GetBillSemesterByIdController)
-	admin.PUT("/bill-semester/:id", billSemesterController.UpdateBillSemesterByIdController)
-	admin.DELETE("/bill-semester/:id", billSemesterController.DeleteBillSemesterByIdController)
 
 	// ====== Buku Admin =======
 	admin.POST("/book", bookController.CreateBookController)
 	admin.GET("/books", bookController.GetAllBooksController)
-	admin.GET("/book/:id", bookController.GetBookByIdController)
-	admin.PUT("/book/:id", bookController.UpdateBookByIdController)
-	admin.DELETE("/book/:id", bookController.DeleteBookByIdController)
-
-	// ====== Item Admin =======
-	admin.POST("/item", itemController.CreateItemController)
-	admin.GET("/items", itemController.GetAllItemsController)
-	admin.GET("/item/:id", itemController.GetItemByIdController)
-	admin.PUT("/item/:id", itemController.UpdateItemByIdController)
-	admin.DELETE("/item/:id", itemController.DeleteItemByIdController)
+	admin.GET("/book/:id", bookController.GetBookByIDController)
+	admin.GET("/book/code/:code", bookController.GetBookByCodeController)
+	admin.PUT("/book/:id", bookController.UpdateBookByIDController)
+	admin.DELETE("/book/:id", bookController.DeleteBookByIDController)
 
 	// ====== Shirt Admin =======
 	admin.POST("/shirt", shirtController.CreateShirtController)
 	admin.GET("/shirts", shirtController.GetAllShirtsController)
 	admin.GET("/shirt/:id", shirtController.GetShirtByIdController)
+	admin.GET("/shirt/code/:code", shirtController.GetShirtByCodeController)
 	admin.PUT("/shirt/:id", shirtController.UpdateShirtByIdController)
 	admin.DELETE("/shirt/:id", shirtController.DeleteShirtByIdController)
 
-	// ====== Student Admin =======
+	// ====== Cart Admin =======
+	admin.POST("/cart", cartController.CreateCartController)
+	admin.GET("/carts", cartController.GetAllCartsController)
+	admin.GET("/cart/:id", cartController.GetCartByIDController)
+	admin.GET("/cart/:user_id", cartController.GetCartByUserIDController)
+	admin.PUT("/cart/:id", cartController.UpdateCartByIdController)
+	admin.DELETE("/cart/:id", cartController.DeleteCartByIdController)
+
+	// ====== CART ADMIN ======
+	admin.POST("/cart-item", cartItemController.AddCartItemController)
+	admin.GET("/cart-items", cartItemController.GetAllCartItemsController)
+	admin.GET("/cart-items/:cart_id", cartItemController.GetCartItemsByCartIDController)
+	admin.PUT("/cart-item/:id", cartItemController.UpdateCartItemByIDController)
+	admin.DELETE("/cart-item/:id", cartItemController.DeleteCartItemByIDController)
+
+	// ====== ORDER ADMIN ======
+	admin.POST("/order", orderController.CreateOrderController)
+	admin.GET("/orders", orderController.GetAllOrdersController)
+	admin.GET("/order/:id", orderController.GetOrderByIdController)
+	admin.PUT("/order/:id", orderController.UpdateOrderByIdController)
+	admin.DELETE("/order/:id", orderController.DeleteOrderByIdController)
+
+	// ====== PAYMENT ADMIN ======
+	admin.POST("/payment", paymentController.CreatePaymentController)
+	admin.GET("/payments", paymentController.GetAllPaymentsController)
+	admin.GET("/payment/:id", paymentController.GetPaymentByOrderIDController)
+	admin.PUT("/payment/:id", paymentController.UpdatePaymentByIDController)
+	admin.DELETE("/payment/:id", paymentController.DeletePaymentByIDController)
+
+	// ====== PAYMENT HISTORY ADMIN ======
+	admin.GET("/payment-history/:user_id", paymentHistoryController.GetPaymentHistoryByUserIDController)
+
+	// ====== STUDENT ADMIN =======
 	admin.POST("/student", studentController.CreateStudentController)
 	admin.GET("/students", studentController.GetAllStudentsController)
 	admin.GET("/students/by-parent-name", studentController.GetStudentsByParentNameController)
@@ -122,21 +146,11 @@ func Routes(e *echo.Echo, db *gorm.DB) {
 	admin.PUT("/student/:id", studentController.UpdateStudentByIdController)
 	admin.DELETE("/student/:id", studentController.DeleteStudentByIdController)
 
-	// ====== Transaction Admin =======
-	admin.GET("/transactions", transactionController.GetAllTransactionsController)
-	admin.GET("/transaction/:id", transactionController.GetTransactionByIdController)
-
-	// ====== Transaction History Admin =======
-	admin.GET("/transaction-histories", transactionHistoryController.GetAllHistoriesController)
-	admin.GET("/transaction-history/:id", transactionHistoryController.GetHistoryByIdController)
-	admin.GET("/transaction-history/user/:id", transactionController.GetTransactionByUserIdController)
-	admin.DELETE("/transaction-history/:id", transactionHistoryController.DeleteHistoryByIdController)
-
-	// ====== User Admin =======
+	// ====== USER ADMIN =======
 	admin.GET("/users", userController.GetAllUsersController)
 	admin.GET("/user/:id", userController.GetUserByIdController)
-	admin.GET("/user/:email", userController.GetUserByEmailController)
-	admin.GET("/user/:phone", userController.GetUserByPhoneController)
+	admin.GET("/user/email/:email", userController.GetUserByEmailController)
+	admin.GET("/user/phone/:phone", userController.GetUserByPhoneController)
 	admin.GET("/user/query", userController.GetUserByQueryController)
 	admin.PUT("/user/:id", userController.UpdateUserByIdController)
 	admin.DELETE("/user/:id", userController.DeleteUserByIdController)
@@ -146,28 +160,37 @@ func Routes(e *echo.Echo, db *gorm.DB) {
 	user.PUT("/user", userController.GetUserByIdController)
 	user.DELETE("/user", userController.DeleteUserByIdController)
 
-	// ====== USER TRANSACTION =======
-	user.POST("/item", itemController.CreateItemController)
-	user.POST("/item", itemController.CreateItemController)
-	user.GET("/item/:id", itemController.GetItemByIdController)
-	user.PUT("/item/:id", itemController.UpdateItemByIdController)
-	user.DELETE("/item/:id", itemController.DeleteItemByIdController)
+	// ====== USER CART =======
+	user.POST("/cart", cartController.CreateCartController)
+	user.GET("/cart/:id", cartController.GetCartByUserIDController)
+	user.PUT("cart/:id", cartController.UpdateCartByIdController)
+	user.DELETE("/cart/:id", cartController.DeleteCartByIdController)
 
-	// ====== USER TRANSACTION =======
-	user.GET("/transactions", transactionController.GetTransactionByUserIdController)
-	user.GET("/transaction-histories", transactionHistoryController.GetHistoriesByUserIdController)
+	// ====== USER CART ITEM =======
+	user.POST("/cart-item", cartItemController.AddCartItemController)
+	user.GET("/cart-items/:cart_id", cartItemController.GetCartItemsByCartIDController)
+	user.PUT("/cart-item/:id", cartItemController.UpdateCartItemByIDController)
+	user.DELETE("/cart-item/:id", cartItemController.DeleteCartItemByIDController)
 
 	// ====== USER STUDENT =======
 	user.POST("/student", studentController.CreateStudentController)
 	user.GET("/student/:id", studentController.GetStudentByIdController)
 	user.GET("/students", studentController.GetStudentsByParentNameController) // Ambil siswa berdasarkan parent_name
 
-	// ====== USER TRANSACTION =======
-	user.GET("/transactions", transactionController.GetTransactionByUserIdController) // Ambil semua transaksi user
-	user.GET("/transaction/:id", transactionController.GetTransactionByIdController)  // Ambil transaksi berdasarkan ID      // Buat transaksi baru
+	// ====== USER PAYMENT =======
+	user.POST("/payment", paymentController.CreatePaymentController)
+	user.GET("/payment/:id", paymentController.GetPaymentByOrderIDController)
+	user.DELETE("payment/:id", paymentController.DeletePaymentByIDController)
 
-	// ====== USER TRANSACTION HISTORY =======
-	user.GET("/transaction-histories", transactionHistoryController.GetHistoriesByUserIdController) // Ambil semua riwayat transaksi user
-	user.GET("/transaction-history/:id", transactionHistoryController.GetHistoryByIdController)     // Ambil detail riwayat transaksi berdasarkan ID
+	// ====== USER PAYMENT HISTORY ======
+	user.GET("/payment-history/:id", paymentHistoryController.GetPaymentHistoryByUserIDController)
+
+	// ====== USER BOOK ======
+	user.GET("/books", bookController.GetAllBooksController)
+	user.GET("/book/:id", bookController.GetBookByIDController)
+
+	// ====== USER SHIRT ======
+	user.GET("/shirts", shirtController.GetAllShirtsController)
+	user.GET("/shirt/:id", shirtController.GetShirtByIdController)
 
 }

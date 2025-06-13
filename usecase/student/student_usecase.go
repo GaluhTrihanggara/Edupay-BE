@@ -5,81 +5,133 @@ import (
 	"Edupay/repository"
 	"errors"
 	"fmt"
+
+	"github.com/google/uuid"
 )
 
 type StudentUseCase interface {
-	CreateStudentUseCase(payload *model.Student) (*model.Student, error)
-	GetAllStudentUseCase(page, limit int, name, class string) ([]*model.Student, error)
-	GetStudentByIdUseCase(Id string) (*model.Student, error)
-	GetStudentsByParentNameUseCase(parentName string) ([]*model.Student, error)
-	UpdatedStudentByIdUseCase(Id string, payload *model.Student) (*model.Student, error)
-	DeleteStudentByIdUseCase(Id string) error
+	GetAllStudents(page, limit int, name, class string) ([]*model.Student, error)
+	GetStudentByID(ID uuid.UUID) (*model.Student, error)
+	GetStudentsByParentName(parentName string) ([]*model.Student, error)
+	CreateStudent(student *model.Student) (*model.Student, error)
+	UpdateStudentByID(ID uuid.UUID, student *model.Student) (*model.Student, error)
+	DeleteStudentByID(ID uuid.UUID) error
 }
 
 type studentUseCase struct {
-	studentRepository repository.StudentRepository
+	studentRepo repository.StudentRepository
 }
 
-// DeleteStudentByIdUseCase implements StudentUseCase.
-func (uc *studentUseCase) DeleteStudentByIdUseCase(Id string) error {
-	panic("unimplemented")
-}
-
-// UpdatedStudentByIdUseCase implements StudentUseCase.
-func (uc *studentUseCase) UpdatedStudentByIdUseCase(Id string, payload *model.Student) (*model.Student, error) {
-	panic("unimplemented")
-}
-
-func NewStudentUseCase(studentRepository repository.StudentRepository) *studentUseCase {
+func NewStudentUseCase(studentRepo repository.StudentRepository) StudentUseCase {
 	return &studentUseCase{
-		studentRepository: studentRepository,
+		studentRepo: studentRepo,
 	}
 }
 
-func (uc *studentUseCase) CreateStudentUseCase(payload *model.Student) (*model.Student, error) {
-	student, err := uc.studentRepository.CreateStudentRepository(payload)
-	if err != nil {
-		return nil, fmt.Errorf("error creating student in database: %w", err)
+func (uc *studentUseCase) GetAllStudents(page, limit int, name, class string) ([]*model.Student, error) {
+	// Validasi pagination
+	if page < 1 {
+		page = 1
 	}
-	return student, nil
-}
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
 
-func (uc *studentUseCase) GetAllStudentUseCase(page, limit int, name, class string) ([]*model.Student, error) {
-	students, err := uc.studentRepository.GetAllStudentsRepository(page, limit, name, class)
+	students, err := uc.studentRepo.GetAllStudentsRepository(page, limit, name, class)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get students: %v", err)
 	}
+
+	if len(students) == 0 {
+		return nil, errors.New("no students found")
+	}
+
 	return students, nil
 }
 
-func (uc *studentUseCase) GetStudentByIdUseCase(Id string) (*model.Student, error) {
-	student, err := uc.studentRepository.GetStudentByIdRepository(Id)
-	if err != nil {
-		return nil, errors.New("student not found")
+func (uc *studentUseCase) GetStudentByID(ID uuid.UUID) (*model.Student, error) {
+	if ID == uuid.Nil {
+		return nil, errors.New("invalid student ID")
 	}
+
+	student, err := uc.studentRepo.GetStudentByIdRepository(ID)
+	if err != nil {
+		return nil, fmt.Errorf("student not found: %v", err)
+	}
+
 	return student, nil
 }
 
-func (uc *studentUseCase) GetStudentsByParentNameUseCase(parentName string) ([]*model.Student, error) {
-	students, err := uc.studentRepository.GetStudentsByParentNameRepository(parentName)
-	if err != nil {
-		return nil, fmt.Errorf("error getting students by parent name: %w", err)
+func (uc *studentUseCase) GetStudentsByParentName(parentName string) ([]*model.Student, error) {
+	if parentName == "" {
+		return nil, errors.New("parent name cannot be empty")
 	}
+
+	students, err := uc.studentRepo.GetStudentsByParentNameRepository(parentName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get students by parent name: %v", err)
+	}
+
+	if len(students) == 0 {
+		return nil, errors.New("no students found for this parent")
+	}
+
 	return students, nil
 }
 
-func (uc *studentUseCase) UpdateStudentByIdRepository(Id string, payload *model.Student) (*model.Student, error) {
-	student, err := uc.studentRepository.UpdateStudentByIdRepository(Id, payload)
-	if err != nil {
-		return nil, fmt.Errorf("failed to update student: %w", err)
+func (uc *studentUseCase) CreateStudent(student *model.Student) (*model.Student, error) {
+	// Validasi data siswa
+	if student.FirstName == "" || student.LastName == "" {
+		return nil, errors.New("first name and last name are required")
 	}
-	return student, nil
+
+	if student.Class == "" {
+		return nil, errors.New("class is required")
+	}
+
+	if student.UserID == uuid.Nil {
+		return nil, errors.New("parent ID is required")
+	}
+
+	createdStudent, err := uc.studentRepo.CreateStudentRepository(student)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create student: %v", err)
+	}
+
+	return createdStudent, nil
 }
 
-func (uc *studentUseCase) DeleteStudentByIdRepository(Id string) error {
-	err := uc.studentRepository.DeleteStudentByIdRepository(Id)
-	if err != nil {
-		return errors.New("student not found")
+func (uc *studentUseCase) UpdateStudentByID(ID uuid.UUID, student *model.Student) (*model.Student, error) {
+	if ID == uuid.Nil {
+		return nil, errors.New("invalid student ID")
 	}
+
+	// Validasi data yang akan diupdate
+	if student.FirstName == "" || student.LastName == "" {
+		return nil, errors.New("first name and last name are required")
+	}
+
+	if student.Class == "" {
+		return nil, errors.New("class is required")
+	}
+
+	updatedStudent, err := uc.studentRepo.UpdateStudentByIdRepository(ID, student)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update student: %v", err)
+	}
+
+	return updatedStudent, nil
+}
+
+func (uc *studentUseCase) DeleteStudentByID(ID uuid.UUID) error {
+	if ID == uuid.Nil {
+		return errors.New("invalid student ID")
+	}
+
+	err := uc.studentRepo.DeleteStudentByIdRepository(ID)
+	if err != nil {
+		return fmt.Errorf("failed to delete student: %v", err)
+	}
+
 	return nil
 }

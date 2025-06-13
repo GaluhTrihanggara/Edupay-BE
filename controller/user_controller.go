@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
 
@@ -14,7 +15,7 @@ type UserController interface {
 	GetAllUsersController(c echo.Context) error
 	GetUserByIdController(c echo.Context) error
 	GetUserByPhoneController(c echo.Context) error
-	GetUserByEmailController(c echo.Context) error
+	GetEmailUserController(c echo.Context) error
 	GetUserByQueryController(c echo.Context) error
 	UpdateUserByIdController(c echo.Context) error
 	DeleteUserByIdController(c echo.Context) error
@@ -60,8 +61,9 @@ func (ctrl *userController) GetAllUsersController(c echo.Context) error {
 
 // GetUserByIdController mengambil user berdasarkan ID
 func (ctrl *userController) GetUserByIdController(c echo.Context) error {
-	userId := c.Param("id")
-	if userId == "" {
+	userIdStr := c.Param("id")
+	userId, err := uuid.Parse(userIdStr)
+	if err != nil {
 		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "Invalid user ID",
@@ -85,7 +87,7 @@ func (ctrl *userController) GetUserByIdController(c echo.Context) error {
 
 // GetUserByPhoneController mengambil user berdasarkan nomor telepon
 func (ctrl *userController) GetUserByPhoneController(c echo.Context) error {
-	phone := c.QueryParam("phone")
+	phone := c.Param("phone")
 	if phone == "" {
 		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -110,7 +112,7 @@ func (ctrl *userController) GetUserByPhoneController(c echo.Context) error {
 
 // GetUserByEmailController mengambil user berdasarkan email
 func (ctrl *userController) GetUserByEmailController(c echo.Context) error {
-	email := c.QueryParam("email")
+	email := c.Param("email")
 	if email == "" {
 		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -175,8 +177,9 @@ func (ctrl *userController) GetUserByQueryController(c echo.Context) error {
 
 // UpdateUserByIdController memperbarui user berdasarkan ID
 func (ctrl *userController) UpdateUserByIdController(c echo.Context) error {
-	userId := c.Param("id")
-	if userId == "" {
+	userIdStr := c.Param("id")
+	userId, err := uuid.Parse(userIdStr)
+	if err != nil {
 		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "Invalid user ID",
@@ -209,15 +212,16 @@ func (ctrl *userController) UpdateUserByIdController(c echo.Context) error {
 
 // DeleteUserByIdController menghapus user berdasarkan ID
 func (ctrl *userController) DeleteUserByIdController(c echo.Context) error {
-	userId := c.Param("id")
-	if userId == "" {
+	userIdStr := c.Param("id")
+	userId, err := uuid.Parse(userIdStr)
+	if err != nil {
 		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "Invalid user ID",
 		})
 	}
 
-	err := ctrl.userUseCase.DeleteUserByIdUseCase(userId)
+	err = ctrl.userUseCase.DeleteUserByIdUseCase(userId)
 	if err != nil {
 		return c.JSON(http.StatusNotFound, model.ErrorResponse{
 			StatusCode: http.StatusNotFound,

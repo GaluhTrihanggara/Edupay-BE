@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
 
@@ -37,7 +38,7 @@ func (ctrl *studentController) CreateStudentController(c echo.Context) error {
 		})
 	}
 
-	response, err := ctrl.studentUseCase.CreateStudentUseCase(&payload)
+	response, err := ctrl.studentUseCase.CreateStudent(&payload)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -65,7 +66,7 @@ func (ctrl *studentController) GetAllStudentsController(c echo.Context) error {
 	name := c.QueryParam("name")
 	class := c.QueryParam("class")
 
-	response, err := ctrl.studentUseCase.GetAllStudentUseCase(page, limit, name, class)
+	response, err := ctrl.studentUseCase.GetAllStudents(page, limit, name, class)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -86,14 +87,15 @@ func (ctrl *studentController) GetAllStudentsController(c echo.Context) error {
 }
 
 func (ctrl *studentController) GetStudentByIdController(c echo.Context) error {
-	studentId := c.Param("id")
-	if studentId == "" {
+	studentIdStr := c.Param("id")
+	studentId, err := uuid.Parse(studentIdStr)
+	if err != nil {
 		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "Invalid Student Id",
 		})
 	}
-	response, err := ctrl.studentUseCase.GetStudentByIdUseCase(studentId)
+	response, err := ctrl.studentUseCase.GetStudentByID(studentId)
 	if err != nil {
 		return c.JSON(http.StatusNotFound, model.ErrorResponse{
 			StatusCode: http.StatusNotFound,
@@ -119,7 +121,7 @@ func (ctrl *studentController) GetStudentsByParentNameController(c echo.Context)
 	}
 
 	// Call use case to get students by parent's name
-	students, err := ctrl.studentUseCase.GetStudentsByParentNameUseCase(parentName)
+	students, err := ctrl.studentUseCase.GetStudentsByParentName(parentName)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -137,8 +139,9 @@ func (ctrl *studentController) GetStudentsByParentNameController(c echo.Context)
 }
 
 func (ctrl *studentController) UpdateStudentByIdController(c echo.Context) error {
-	studentId := c.Param("id")
-	if studentId == "" {
+	studentIdStr := c.Param("id")
+	studentId, err := uuid.Parse(studentIdStr)
+	if err != nil {
 		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "Invalid Student Id",
@@ -153,7 +156,7 @@ func (ctrl *studentController) UpdateStudentByIdController(c echo.Context) error
 		})
 	}
 
-	response, err := ctrl.studentUseCase.UpdatedStudentByIdUseCase(studentId, &payload)
+	response, err := ctrl.studentUseCase.UpdateStudentByID(studentId, &payload)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, model.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -170,15 +173,16 @@ func (ctrl *studentController) UpdateStudentByIdController(c echo.Context) error
 }
 
 func (ctrl *studentController) DeleteStudentByIdController(c echo.Context) error {
-	studentId := c.Param("id")
-	if studentId == "" {
+	studentIdStr := c.Param("id")
+	studentId, err := uuid.Parse(studentIdStr)
+	if err != nil {
 		return c.JSON(http.StatusBadRequest, model.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "Invalid Student Id",
 		})
 	}
 
-	err := ctrl.studentUseCase.DeleteStudentByIdUseCase(studentId)
+	err = ctrl.studentUseCase.DeleteStudentByID(studentId)
 	if err != nil {
 		return c.JSON(http.StatusNotFound, model.ErrorResponse{
 			StatusCode: http.StatusNotFound,

@@ -20,6 +20,8 @@ func main() {
 		log.Fatalf("Database connection failed: %v", err)
 	}
 
+	db = db.Debug()
+
 	// Inisialisasi Echo framework
 	e := echo.New()
 
